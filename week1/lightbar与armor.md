@@ -7,7 +7,7 @@ struct Lightbar//一根灯条\
   cv::Point2f center, top, bottom, top2bottom;//核心位置信息 center灯条中心点 ；top/bottom灯条上下两端；top2bottom是一个方向向量（从顶到底）\
   std::vector<cv::Point2f> points;//灯条的四个角点（用来在图上画框）\
 接下来是三大几何特征，给check_geometry筛选用\
-  double angle, angle_error, length, width, ratio;//角度和角度误差（灯条应该差不多是竖直的。如果歪得太离谱（比如斜着长在背景上），程序就会判定误差太大，扔掉。）；长、宽、长宽比
+  double angle, angle_error, length, width, ratio;//角度和角度误差（灯条应该差不多是竖直的。如果歪得太离谱（比如斜着长在背景上），程序就会判定误差太大，扔掉。）；长、宽、长宽比\
   cv::RotatedRect rotated_rect;//openCV的旋转矩阵类，记录了中心、长度和角度\
   Lightbar(const cv::RotatedRect & rotated_rect, std::size_t id);\
   Lightbar() {};\
