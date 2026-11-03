@@ -11,7 +11,6 @@ struct Lightbar//一根灯条\
   cv::RotatedRect rotated_rect;//openCV的旋转矩阵类，记录了中心、长度和角度\
   Lightbar(const cv::RotatedRect & rotated_rect, std::size_t id);\
   Lightbar() {};\
-  
 };\
 ### Armor
 struct Armor\
@@ -21,12 +20,12 @@ struct Armor\
   Lightbar left, right;     //used to be const\
   cv::Point2f center;       // 不是对角线交点，不能作为实际中心！Why？装甲在摄像头中往往是斜着的，这样观察长方形，其对角线交点并不是真实的几何中心\
   cv::Point2f center_norm;  // 归一化坐标。大白话解释：就是把绝对坐标变成百分比。x和y除以图像宽高，变成0~1的小数，方便计算。\
-  std::vector<cv::Point2f> points; // 装甲的四个角点\
+  std::vector<cv::Point2f> points; // 装甲的四个角点
 
 2.几何筛选
   double ratio;              // 两灯条的中点连线与长灯条的长度之比，用来判断大小装甲\
   double side_ratio;         // 长灯条与短灯条的长度之比（若长度相差太多，及说明不是一对灯条）\
-  double rectangular_error;  // 灯条和中点连线所成夹角与π/2的差值（即是矩形误差，四个点连起来像不像一个矩形）\
+  double rectangular_error;  // 灯条和中点连线所成夹角与π/2的差值（即是矩形误差，四个点连起来像不像一个矩形）
 
 3.下面是神经网络分类结果\
  ArmorType type;       // 结果：大装甲/小装甲 \
@@ -34,19 +33,19 @@ struct Armor\
   ArmorPriority priority; // 优先级（比如先打英雄还是先打步兵） \
  int class_id;         // 分类器输出的类别数字 \
  cv::Mat pattern;      // 截取下来的那块图案（喂给神经网络吃的就是它） \
- double confidence;    // 置信度（神经网络有多大把握）\
+ double confidence;    // 置信度（神经网络有多大把握）
 
   bool duplicated;      // 去重标记（true表示它是重复的，等会儿会被删掉）\
 
-  Eigen::Vector3d xyz_in_gimbal;  // 单位：m\
-  Eigen::Vector3d xyz_in_world;   // 单位：m\
-  Eigen::Vector3d ypr_in_gimbal;  // 单位：rad\
-  Eigen::Vector3d ypr_in_world;   // 单位：rad\
-  Eigen::Vector3d ypd_in_world;   // 球坐标系\
+  Eigen::Vector3d xyz_in_gimbal;  // 目标相对于云台的三维坐标 单位：m\
+  Eigen::Vector3d xyz_in_world;   // 目标在整个比赛场地（世界坐标系）里的绝对坐标 单位：m\
+  Eigen::Vector3d ypr_in_gimbal;  // 偏航、俯仰、翻滚 ：目标相对于云台的倾斜角度。比如，如果对面机器人在爬坡，它的装甲板就是向上仰的（Pitch 角）。 单位：rad\
+  Eigen::Vector3d ypr_in_world;   // 目标在世界坐标系里的绝对朝向。 单位：rad\
+  Eigen::Vector3d ypd_in_world;   //用“偏航角（Yaw）、俯仰角（Pitch）、距离（Distance）”来表示目标在哪里。 球坐标系
 
-  double yaw_raw;  // rad\
+  double yaw_raw;  // rad
 
-  Armor(const Lightbar & left, const Lightbar & right);\
+  Armor(const Lightbar & left, const Lightbar & right);
   Armor(
     int class_id, float confidence, const cv::Rect & box, std::vector<cv::Point2f> armor_keypoints);\
   Armor(
