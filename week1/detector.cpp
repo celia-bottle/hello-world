@@ -49,50 +49,51 @@ std::list<Armor> Detector::detect(const cv::Mat & bgr_img, int frame_count)
   std::size_t lightbar_id = 0;
   std::list<Lightbar> lightbars;
   for (const auto & contour : contours) {
-    auto rotated_rect = cv::minAreaRect(contour);
-    auto lightbar = Lightbar(rotated_rect, lightbar_id);
+    auto rotated_rect = cv::minAreaRect(contour); // 给轮廓套上最小的旋转矩形
+    auto lightbar = Lightbar(rotated_rect, lightbar_id); // 打包成 Lightbar 对象
 
-    if (!check_geometry(lightbar)) continue;
+    if (!check_geometry(lightbar)) continue;//几何筛查
 
-    lightbar.color = get_color(bgr_img, contour);
-    lightbars.emplace_back(lightbar);
+    lightbar.color = get_color(bgr_img, contour);// 给合格灯条打上红蓝标签
+    lightbars.emplace_back(lightbar);// 存入待配对名单
     lightbar_id += 1;
   }
 
-  // 将灯条从左到右排序
+  //按x坐标 将灯条从左到右排序
   lightbars.sort([](const Lightbar & a, const Lightbar & b) { return a.center.x < b.center.x; });
 
   // 获取装甲板
   std::list<Armor> armors;
   for (auto left = lightbars.begin(); left != lightbars.end(); left++) {
     for (auto right = std::next(left); right != lightbars.end(); right++) {
-      if (left->color != right->color) continue;
+      if (left->color != right->color) continue;//红蓝不匹配
 
-      auto armor = Armor(*left, *right);
+      auto armor = Armor(*left, *right);// 强行配对成装甲候选
       if (!check_geometry(armor)) continue;
 
-      armor.pattern = get_pattern(bgr_img, armor);
-      classifier_.classify(armor);
+      armor.pattern = get_pattern(bgr_img, armor);//截取装甲图案
+      classifier_.classify(armor);//黑盒神经网络识别
       if (!check_name(armor)) continue;
 
-      armor.type = get_type(armor);
-      if (!check_type(armor)) continue;
+      armor.type = get_type(armor);//大装甲还是小？
+      if (!check_type(armor)) continue;//查armor.hpp里的身份表
 
-      armor.center_norm = get_center_norm(bgr_img, armor.center);
-      armors.emplace_back(armor);
+      armor.center_norm = get_center_norm(bgr_img, armor.center);// 算归一化中心
+      armors.emplace_back(armor); // 成功入围，加入最终名单
     }
   }
 
-  // 检查装甲板是否存在共用灯条的情况
+  // 检查装甲板是否存在共用灯条的情况（去重）
   for (auto armor1 = armors.begin(); armor1 != armors.end(); armor1++) {
     for (auto armor2 = std::next(armor1); armor2 != armors.end(); armor2++) {
+          // 如果两个装甲没有任何共用灯条，跳过
       if (
         armor1->left.id != armor2->left.id && armor1->left.id != armor2->right.id &&
         armor1->right.id != armor2->left.id && armor1->right.id != armor2->right.id) {
         continue;
       }
 
-      // 装甲板重叠, 保留roi小的
+      // 装甲板重叠（共用了左边或右边的灯条）, 保留roi（截取图案）小的
       if (armor1->left.id == armor2->left.id || armor1->right.id == armor2->right.id) {
         auto area1 = armor1->pattern.cols * armor1->pattern.rows;
         auto area2 = armor2->pattern.cols * armor2->pattern.rows;
@@ -102,7 +103,7 @@ std::list<Armor> Detector::detect(const cv::Mat & bgr_img, int frame_count)
           armor1->duplicated = true;
       }
 
-      // 装甲板相连，保留置信度大的
+      // 装甲板相连（A的右边是B的左边），保留置信度大的
       if (armor1->left.id == armor2->right.id || armor1->right.id == armor2->left.id) {
         if (armor1->confidence < armor2->confidence)
           armor1->duplicated = true;
@@ -119,7 +120,9 @@ std::list<Armor> Detector::detect(const cv::Mat & bgr_img, int frame_count)
   return armors;
 }
 
-bool Detector::detect(Armor & armor, const cv::Mat & bgr_img)
+
+//这个函数平时不用，通常是后面 3D 解算发现角点不准了，或者被遮挡了，才会调用。
+bool Detector::detect(Armor & armor, const cv::Mat & bgr_img)//拿现有的四个点，稍微向外扩展一圈，裁出一个小区域。在这个小区域里重新二值化、找灯条。
 {
   // 取得四个角点
   auto tl = armor.points[0];
